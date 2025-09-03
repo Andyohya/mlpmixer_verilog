@@ -70,6 +70,7 @@ module MAC_pipeline (
       end
 
       // Stage 2: Output result and done signal
+      //  是否可以刪掉?
       if (stage1_valid)
       begin
         result <= mult_result;
