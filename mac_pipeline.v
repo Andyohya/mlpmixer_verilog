@@ -69,12 +69,12 @@ module MAC_pipeline (
         stage1_valid <= 1'b0;
       end
 
-      // Stage 2: Output result and done signal
+      // Stage 2: Output result and done signal 
       //  是否可以刪掉?
       if (stage1_valid)
       begin
-        result <= mult_result;
-        done   <= 1'b1;
+        result <= mult_result;  //mult_result是否可改成temp_product
+        done   <= 1'b1;         //測試可不可以跟stage 1合併
         stage2_valid <= 1'b1;
       end
       else
