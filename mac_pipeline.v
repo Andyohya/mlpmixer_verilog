@@ -45,21 +45,21 @@ module MAC_pipeline (
         // Unrolled shift-and-add
         temp_product = 32'd0;
         if (B[0])
-          temp_product = temp_product + (A << 0);
+          temp_product <= temp_product + (A << 0);
         if (B[1])
-          temp_product = temp_product + (A << 1);
+          temp_product <= temp_product + (A << 1);
         if (B[2])
-          temp_product = temp_product + (A << 2);
+          temp_product <= temp_product + (A << 2);
         if (B[3])
-          temp_product = temp_product + (A << 3);
+          temp_product <= temp_product + (A << 3);
         if (B[4])
-          temp_product = temp_product + (A << 4);
+          temp_product <= temp_product + (A << 4);
         if (B[5])
-          temp_product = temp_product + (A << 5);
+          temp_product <= temp_product + (A << 5);
         if (B[6])
-          temp_product = temp_product + (A << 6);
+          temp_product <= temp_product + (A << 6);
         if (B[7])
-          temp_product = temp_product + (A << 7);
+          temp_product <= temp_product + (A << 7);
 
         mult_result  <= temp_product;
         stage1_valid <= 1'b1;
