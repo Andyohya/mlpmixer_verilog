@@ -1,0 +1,102 @@
+`timescale 1ns / 1ps
+
+module tb_parallel_vector;
+
+  parameter HID_DIM = 2;
+  parameter NUM_MACS = 4;
+  parameter OUT_PATCHES = 2;
+  parameter VECTOR_SIZE = HID_DIM * NUM_MACS;
+  parameter BITS = 8;
+
+  reg clk, rst, start;
+  reg [BITS*VECTOR_SIZE-1:0] vec_A_flat;
+  reg [BITS*NUM_MACS*OUT_PATCHES-1:0] vec_B_flat;
+  reg signed [BITS*HID_DIM*OUT_PATCHES-1:0] bias_flat;
+  wire [2:0] state,next_state;
+  wire [2*BITS*HID_DIM*OUT_PATCHES-1:0] result;
+  wire done;
+  wire [9:0] cycle_count;
+  wire [2*BITS-1:0] adder_output;
+  wire [NUM_MACS-1:0] done_flags;
+
+  // DUT
+  Parallel_Vector #(
+                    .HID_DIM(HID_DIM),
+                    .NUM_MACS(NUM_MACS),
+                    .OUT_PATCHES(OUT_PATCHES),
+                    .VECTOR_SIZE(VECTOR_SIZE),
+                    .BITS(BITS)
+                  ) dut (
+                    .clk(clk),
+                    .rst(rst),
+                    .start(start),
+                    .vec_A_flat(vec_A_flat),
+                    .vec_B_flat(vec_B_flat),
+                    .bias_flat(bias_flat),
+                    .result(result),
+                    .done(done),
+                    .cycle_count(cycle_count),
+                    .adder_output(adder_output),
+                    .done_flags(done_flags),
+                    .state(state),
+                    .next_state(next_state)
+                  );
+  integer i,j;
+    
+  reg [7:0] mem_in [0:VECTOR_SIZE-1];
+  reg [7:0] mem_wt [0:NUM_MACS*OUT_PATCHES-1];
+  reg [7:0] mem_bias [0:HID_DIM*OUT_PATCHES-1];
+  
+  // Clock
+  initial
+    clk = 0;
+  always #5 clk = ~clk;
+    
+  initial
+  begin
+    // 讀取 input.mem
+    $readmemh("input.mem", mem_in);
+    for (i = 0; i < HID_DIM; i = i + 1)
+      for (j = 0; j < NUM_MACS; j = j + 1)
+        vec_A_flat[BITS*(i*NUM_MACS + j) +: BITS] = mem_in[i*NUM_MACS + j];
+
+    // 讀取 weight.mem
+    $readmemh("weight.mem", mem_wt);
+    for (i = 0; i < NUM_MACS; i = i + 1)
+      for (j = 0; j < OUT_PATCHES; j = j + 1)
+        vec_B_flat[BITS*(i*OUT_PATCHES + j) +: BITS] = mem_wt[i*OUT_PATCHES + j];
+
+    // 讀取 bias.mem
+    $readmemh("bias.mem", mem_bias); // 直接重用 mem_wt 來讀 bias
+    for (j = 0; j < HID_DIM*OUT_PATCHES; j = j + 1)
+      bias_flat[BITS*j +: BITS] = { {BITS{mem_bias[j][7]}}, mem_bias[j] }; // sign-extend 8bit to 16bit
+    rst = 1;
+    start = 0;
+
+    // 等待一個 clock
+    #20;
+    rst = 0;
+
+    // 啟動
+    #10;
+    start = 1;
+    #10;
+    start = 0;
+
+    // 等待運算完成
+    wait(done);
+
+    // 顯示結果（int16 與 int8 兩種格式）
+    $display("運算完成，cycle_count = %d", cycle_count);
+    for (i = 0; i < HID_DIM*OUT_PATCHES; i = i + 1)
+    begin
+      $display("result[%0d] = %0d (int16), %0d (int8)",
+               i,
+               $signed(result[2*BITS*i +: 2*BITS]),
+               $signed(result[2*BITS*i +: 8])
+              );
+    end
+
+    $finish;
+  end
+endmodule
